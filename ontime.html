@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ontime</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg2: #f7f7f7;
+    --bg3: #f0f0f0;
+    --text: #111111;
+    --text2: #555555;
+    --text3: #999999;
+    --border: #e0e0e0;
+    --black: #111111;
+    --white: #ffffff;
+    --radius: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111111;
+      --bg2: #1a1a1a;
+      --bg3: #222222;
+      --text: #f0f0f0;
+      --text2: #aaaaaa;
+      --text3: #666666;
+      --border: #2e2e2e;
+      --black: #f0f0f0;
+      --white: #111111;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 100px 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  .header {
+    padding: 48px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    color: var(--text);
+  }
+  .header p {
+    font-size: 13px;
+    color: var(--text3);
+    margin-top: 3px;
+  }
+
+  /* ── Permission banner ──────────────────────────────────── */
+  #permission-banner {
+    display: none;
+    margin: 16px 24px 0;
+    padding: 12px 16px;
+    background: var(--bg3);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text2);
+    align-items: center;
+    gap: 10px;
+  }
+  #permission-banner.visible { display: flex; }
+  #permission-banner button {
+    margin-left: auto;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--black);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Routine list ───────────────────────────────────────── */
+  #routine-list { padding: 8px 0; }
+
+  .empty-state {
+    text-align: center;
+    padding: 72px 24px;
+    color: var(--text3);
+  }
+  .empty-state .icon {
+    font-size: 40px;
+    margin-bottom: 14px;
+    display: block;
+    opacity: 0.35;
+  }
+  .empty-state p { font-size: 14px; line-height: 1.8; }
+
+  /* ── Routine card ───────────────────────────────────────── */
+  .routine-card {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    transition: background 0.15s;
+  }
+  .routine-card.disabled .routine-time,
+  .routine-card.disabled .routine-title {
+    opacity: 0.4;
+  }
+
+  .routine-info { flex: 1; min-width: 0; }
+  .routine-time {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .routine-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .routine-days {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 4px;
+    letter-spacing: 0.2px;
+  }
+
+  .routine-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* ── Toggle switch ──────────────────────────────────────── */
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .toggle input { display: none; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--black); }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: var(--white);
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .toggle input:checked + .toggle-track::after { transform: translateX(18px); }
+
+  /* ── Delete button ──────────────────────────────────────── */
+  .btn-delete {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-delete:hover { background: #fff0f0; border-color: #ffb3b3; color: #c33; }
+  @media (prefers-color-scheme: dark) {
+    .btn-delete:hover { background: #2a1515; border-color: #5a2020; color: #f88; }
+  }
+
+  /* ── FAB ────────────────────────────────────────────────── */
+  .fab {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 432px;
+    width: calc(100% - 48px);
+    padding: 15px 24px;
+    background: var(--black);
+    color: var(--white);
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    letter-spacing: -0.2px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    transition: opacity 0.15s, transform 0.15s;
+    z-index: 100;
+  }
+  .fab:active {
+    opacity: 0.85;
+    transform: translateX(-50%) scale(0.98);
+  }
+
+  /* ── Modal overlay ──────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--bg);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 480px;
+    padding: 12px 24px 40px;
+    transform: translateY(24px);
+    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    max-height: 92vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 22px;
+  }
+  .modal h2 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+
+  /* ── Form ───────────────────────────────────────────────── */
+  .form-group { margin-bottom: 22px; }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .form-input:focus {
+    border-color: var(--black);
+    background: var(--bg);
+  }
+
+  /* ── Day picker ─────────────────────────────────────────── */
+  .day-picker {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .day-btn {
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg2);
+    color: var(--text2);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.2px;
+    padding: 0;
+    font-family: inherit;
+  }
+  .day-btn.active {
+    background: var(--black);
+    color: var(--white);
+    border-color: var(--black);
+  }
+
+  /* ── Buttons ────────────────────────────────────────────── */
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--black);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:active { opacity: 0.8; }
+
+  .btn-cancel {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: var(--text3);
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 6px;
+    font-family: inherit;
+  }
+  .btn-cancel:hover { color: var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────── -->
+<div class="header">
+  <h1>Ontime</h1>
+  <p>Your daily routines</p>
+</div>
+
+<!-- ── Notification permission banner ───────────────────── -->
+<div id="permission-banner">
+  <span>Enable notifications to get reminders</span>
+  <button onclick="requestPermission()">Enable</button>
+</div>
+
+<!-- ── Routine list ──────────────────────────────────────── -->
+<div id="routine-list"></div>
+
+<!-- ── FAB ───────────────────────────────────────────────── -->
+<button class="fab" onclick="openModal()">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+  Add Routine
+</button>
+
+<!-- ── Add Routine Modal ─────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <h2>New Routine</h2>
+
+    <div class="form-group">
+      <label class="form-label" for="input-title">Title</label>
+      <input class="form-input" type="text" id="input-title"
+             placeholder="e.g. Morning run" maxlength="60"
+             onkeydown="if(event.key==='Enter') saveRoutine()" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="input-time">Time</label>
+      <input class="form-input" type="time" id="input-time" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Repeat on</label>
+      <div class="day-picker" id="day-picker">
+        <!-- data-day uses JS getDay() values: 0=Sun, 1=Mon ... 6=Sat -->
+        <button class="day-btn" data-day="1">Mon</button>
+        <button class="day-btn" data-day="2">Tue</button>
+        <button class="day-btn" data-day="3">Wed</button>
+        <button class="day-btn" data-day="4">Thu</button>
+        <button class="day-btn" data-day="5">Fri</button>
+        <button class="day-btn" data-day="6">Sat</button>
+        <button class="day-btn" data-day="0">Sun</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="saveRoutine()">Save Routine</button>
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────────
+  let routines = [];
+
+  // Deduplication: prevent firing the same notification twice in the same minute
+  // Key format: "routineId-YYYY-MM-DD-HH:MM"
+  const firedThisMinute = new Set();
+
+  // ── localStorage helpers ───────────────────────────────────────────────────────
+  function loadRoutines() {
+    try {
+      const raw = localStorage.getItem('ontime_routines');
+      routines = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      routines = [];
+    }
+  }
+
+  function persistRoutines() {
+    localStorage.setItem('ontime_routines', JSON.stringify(routines));
+  }
+
+  // ── Notification helpers ──────────────────────────────────────────────────────
+  function checkPermissionBanner() {
+    const banner = document.getElementById('permission-banner');
+    if (!('Notification' in window)) {
+      banner.style.display = 'none';
+      return;
+    }
+    if (Notification.permission === 'default') {
+      banner.classList.add('visible');
+    } else {
+      banner.classList.remove('visible');
+    }
+  }
+
+  async function requestPermission() {
+    const result = await Notification.requestPermission();
+    checkPermissionBanner();
+    if (result === 'granted') {
+      new Notification('Ontime', {
+        body: "Notifications enabled! You'll be reminded on time.",
+        tag: 'ontime-welcome'
+      });
+    }
+  }
+
+  function fireNotification(routine) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    new Notification(routine.title, {
+      body: `It's ${routine.time} — time for your routine.`,
+      tag: `ontime-${routine.id}`,
+      // Simple inline SVG icon (data URI)
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%23111"/><circle cx="32" cy="32" r="16" stroke="white" stroke-width="2.5" fill="none"/><line x1="32" y1="22" x2="32" y2="32" stroke="white" stroke-width="2.5" stroke-linecap="round"/><line x1="32" y1="32" x2="40" y2="36" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>'
+    });
+  }
+
+  // ── Timer loop ────────────────────────────────────────────────────────────────
+  // Checks every 30 seconds for accuracy within the target minute.
+  // Fires a notification when: routine is active AND time matches AND weekday matches
+  // AND we haven't already fired for this routine in this minute.
+  function checkRoutines() {
+    const now = new Date();
+    const currentDay  = now.getDay();  // 0=Sun … 6=Sat
+    const currentHH   = String(now.getHours()).padStart(2, '0');
+    const currentMM   = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHH}:${currentMM}`;
+    const dateKey     = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+    routines.forEach(routine => {
+      if (!routine.active)              return;  // routine is toggled off
+      if (routine.time !== currentTime) return;  // wrong time
+      if (!routine.days.includes(currentDay)) return; // wrong weekday
+
+      // Deduplication key — unique per routine per minute
+      const key = `${routine.id}-${dateKey}-${currentTime}`;
+      if (firedThisMinute.has(key))     return;  // already fired
+
+      firedThisMinute.add(key);
+      fireNotification(routine);
+    });
+
+    // Clean up old keys once the set grows large (keep memory tidy over long sessions)
+    if (firedThisMinute.size > 500) {
+      // Keep only keys from today
+      for (const k of firedThisMinute) {
+        if (!k.includes(dateKey)) firedThisMinute.delete(k);
+      }
+    }
+  }
+
+  // Run immediately on load, then every 30 seconds
+  checkRoutines();
+  setInterval(checkRoutines, 30_000);
+
+  // ── Day labels ────────────────────────────────────────────────────────────────
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  // Display order Mon-first for the label string
+  const MON_FIRST_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+  function daysLabel(days) {
+    if (!days || days.length === 0) return 'No days selected';
+    if (days.length === 7)          return 'Every day';
+    const isWeekdays = [1,2,3,4,5].every(d => days.includes(d)) && days.length === 5;
+    const isWeekend  = [0,6].every(d => days.includes(d))       && days.length === 2;
+    if (isWeekdays) return 'Weekdays';
+    if (isWeekend)  return 'Weekends';
+    const sorted = [...days].sort((a, b) =>
+      MON_FIRST_ORDER.indexOf(a) - MON_FIRST_ORDER.indexOf(b)
+    );
+    return sorted.map(d => DAY_NAMES[d]).join(' · ');
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+  function renderRoutines() {
+    const list = document.getElementById('routine-list');
+
+    if (routines.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <span class="icon">⏰</span>
+          <p>No routines yet.<br>Tap <strong>Add Routine</strong> to get started.</p>
+        </div>`;
+      return;
+    }
+
+    // Sort by time (HH:MM string comparison works correctly)
+    const sorted = [...routines].sort((a, b) => a.time.localeCompare(b.time));
+
+    list.innerHTML = sorted.map(r => `
+      <div class="routine-card${r.active ? '' : ' disabled'}" id="card-${r.id}">
+        <div class="routine-info">
+          <div class="routine-time">${r.time}</div>
+          <div class="routine-title">${escHtml(r.title)}</div>
+          <div class="routine-days">${daysLabel(r.days)}</div>
+        </div>
+        <div class="routine-actions">
+          <label class="toggle" title="${r.active ? 'Disable' : 'Enable'} routine">
+            <input type="checkbox" ${r.active ? 'checked' : ''}
+                   onchange="toggleRoutine('${r.id}', this.checked)" />
+            <div class="toggle-track"></div>
+          </label>
+          <button class="btn-delete" onclick="deleteRoutine('${r.id}')" title="Delete routine">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>`).join('');
+  }
+
+  // Minimal HTML escaping to prevent XSS in stored titles
+  function escHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── CRUD operations ───────────────────────────────────────────────────────────
+  function deleteRoutine(id) {
+    routines = routines.filter(r => r.id !== id);
+    persistRoutines();
+    renderRoutines();
+  }
+
+  function toggleRoutine(id, active) {
+    const routine = routines.find(r => r.id === id);
+    if (!routine) return;
+    routine.active = active;
+    // Update card class immediately without full re-render
+    const card = document.getElementById(`card-${routine.id}`);
+    if (card) card.classList.toggle('disabled', !active);
+    persistRoutines();
+  }
+
+  function saveRoutine() {
+    const title = document.getElementById('input-title').value.trim();
+    const time  = document.getElementById('input-time').value;
+    const days  = [...document.querySelectorAll('.day-btn.active')]
+                    .map(btn => parseInt(btn.dataset.day, 10));
+
+    // Basic validation
+    if (!title) { showAlert('Please enter a title.'); return; }
+    if (!time)  { showAlert('Please select a time.');  return; }
+    if (days.length === 0) { showAlert('Please select at least one day.'); return; }
+
+    // Prompt for notification permission on first save (if not yet decided)
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(checkPermissionBanner);
+    }
+
+    const routine = {
+      id:        Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      title,
+      time,
+      days,
+      active:    true,
+      createdAt: Date.now()
+    };
+
+    routines.push(routine);
+    persistRoutines();
+    renderRoutines();
+    closeModal();
+  }
+
+  // Simple non-blocking alert using the native dialog (keeps things dependency-free)
+  function showAlert(msg) {
+    alert(msg);
+  }
+
+  // ── Modal ──────────────────────────────────────────────────────────────────────
+  function openModal() {
+    // Pre-fill time to "now"
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('input-title').value = '';
+    document.getElementById('input-time').value  = `${hh}:${mm}`;
+
+    // Default selection: weekdays (Mon–Fri)
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      const d = parseInt(btn.dataset.day, 10);
+      btn.classList.toggle('active', d >= 1 && d <= 5);
+    });
+
+    document.getElementById('modal-overlay').classList.add('open');
+    // Small delay so the slide-up animation completes before keyboard opens
+    setTimeout(() => document.getElementById('input-title').focus(), 250);
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  // Close when clicking the backdrop (not the modal itself)
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  }
+
+  // Day toggle – delegated to the container
+  document.getElementById('day-picker').addEventListener('click', e => {
+    const btn = e.target.closest('.day-btn');
+    if (btn) btn.classList.toggle('active');
+  });
+
+  // Keyboard: ESC closes modal
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // ── Bootstrap ─────────────────────────────────────────────────────────────────
+  loadRoutines();
+  renderRoutines();
+  checkPermissionBanner();
+</script>
+</body>
+</html>
