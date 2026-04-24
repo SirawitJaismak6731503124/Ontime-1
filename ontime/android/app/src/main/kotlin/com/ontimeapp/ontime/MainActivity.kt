@@ -1,4 +1,4 @@
-package com.example.ontime
+package com.ontimeapp.ontime
 
 import io.flutter.embedding.android.FlutterActivity
 
